@@ -4,9 +4,56 @@ import readline
 client = boto3.client('apigateway', region_name='us-east-1')
 con = True
 
-def updateApiGw():
+def getResources(apiId):
+    noVpc = 0
+    try:
+        resources = client.get_resources(
+            restApiId=apiId,
+            limit=500
+        )
+        print("----------------------------------------------------------------")
+        print("\nAPI: "+str(apiId))
+        for r in resources['items']:
+            if 'resourceMethods' in r:
+                for method in r['resourceMethods'].keys():
+                    if method in ["ANY", "GET", "POST", "DELETE"]: 
+                        intg = client.get_integration(
+                            restApiId=apiId,
+                            resourceId=r['id'],
+                            httpMethod=method
+                        )
+                        if 'connectionType' in intg:
+                            print("\n\tResource: '"+r['path']+"' ("+r['id']+")\n")
+                            print("\t\tURI: "+str(intg['uri'])+"\n\t\tType: "+str(intg['httpMethod'])+"\n\t\tVPC Link: "+str(intg['connectionId']+"\n"))
+                        else:
+                            noVpc += 1
+                    else:
+                        break
+        if noVpc > 0:
+            print("\n\t"+str(noVpc)+" RECURSOS SEM VPC LINK")
+    except KeyError:
+        print("\n\t\tSEM VPC ID")
+    #except Exception:
+        #print("\n\t"+str(r['id'])+": INTEGRATION NÃO CONFIGURADA")
+    return getStages(apiId)
+
+def getStages(apiId):
+    try:
+        stages = client.get_stages(
+            restApiId=apiId
+        )
+        for s in stages['item']:
+            if 'variables' in s:
+                print("\n\n\tStage: '"+str(s['stageName'])+"'")
+                for k in s['variables']:
+                    print("\n\t\t"+str(k)+": "+str(s['variables'][k]))
+            else:
+                print("\n\t"+str(s['stageName'])+": SEM STAGE VARIABLES")
+    except Exception:
+        traceback.print_exc()
+
+def updateApiGw(apiId):
     print("== ATUALIZAÇÃO DE API GW ==")
-    apiId = input("Digite o ID da RestAPI: ")
     response = client.update_integration(
         restApiId=apiId,
         resourceId=input("Digite o ID do Recurso: "),
@@ -56,14 +103,15 @@ def stageValidation(apiId, stages, stName):
 
 def main():
     while con == True:
-        try:
-            updateApiGw()
-            ans = input("\nAtualizar outro API GW? (Y/n)   ")
-            if ans.upper() == 'N':
-                print("\n\n== PROCEDIMENTO FINALIZADO ==")
-                return 0
-            print("----------------------------\n")
-        except Exception as e:
-            print("\n[ERROR]",e,"\n")
+        apiId = input("Digite o ID da RestAPI: ")
+        getResources(apiId)
+        ans = input("\nDeseja atualizar o API GW visualizado? (Y/n)   ")
+        if ans.upper() != 'N':
+            updateApiGw(apiId)
+        ans = input("\nAtualizar outro API GW? (Y/n)   ")
+        if ans.upper() == 'N':
+            print("\n\n== PROCEDIMENTO FINALIZADO ==")
+            return 0
+        print("----------------------------\n")
 
 main()
