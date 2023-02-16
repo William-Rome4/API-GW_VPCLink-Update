@@ -1,7 +1,7 @@
 import boto3
 import readline
 
-client = boto3.client('apigateway', region_name='us-east-1')
+client = boto3.client('apigateway', region_name='sa-east-1')
 con = True
 
 def getResources(apiId):
@@ -27,14 +27,12 @@ def getResources(apiId):
                             print("\t\tURI: "+str(intg['uri'])+"\n\t\tType: "+str(intg['httpMethod'])+"\n\t\tVPC Link: "+str(intg['connectionId']+"\n"))
                         else:
                             noVpc += 1
-                    else:
-                        break
         if noVpc > 0:
             print("\n\t"+str(noVpc)+" RECURSOS SEM VPC LINK")
     except KeyError:
         print("\n\t\tSEM VPC ID")
-    #except Exception:
-        #print("\n\t"+str(r['id'])+": INTEGRATION NÃO CONFIGURADA")
+    except Exception:
+        print("\n\t"+str(r['id'])+": INTEGRATION NÃO CONFIGURADA")
     return getStages(apiId)
 
 def getStages(apiId):
@@ -108,6 +106,9 @@ def main():
         ans = input("\nDeseja atualizar o API GW visualizado? (Y/n)   ")
         if ans.upper() != 'N':
             updateApiGw(apiId)
+        ans = input("\nDeseja realizar o Deploy? (Y/n)   ")
+        if ans.upper() != 'N':
+            deploy(apiId)
         ans = input("\nAtualizar outro API GW? (Y/n)   ")
         if ans.upper() == 'N':
             print("\n\n== PROCEDIMENTO FINALIZADO ==")
